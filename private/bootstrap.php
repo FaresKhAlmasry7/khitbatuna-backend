@@ -1,7 +1,18 @@
 <?php
 declare(strict_types=1);
 
-$config = require __DIR__ . '/config.php';
+$config = file_exists(__DIR__ . '/config.php')
+    ? require __DIR__ . '/config.php'
+    : [
+        'db_host' => getenv('DB_HOST') ?: '',
+        'db_port' => getenv('DB_PORT') ?: '3306',
+        'db_name' => getenv('DB_NAME') ?: '',
+        'db_user' => getenv('DB_USER') ?: '',
+        'db_password' => getenv('DB_PASSWORD') ?: '',
+        'frontend_origin' => getenv('FRONTEND_ORIGIN') ?: '',
+        'frontend_url' => getenv('FRONTEND_URL') ?: '',
+        'app_key' => getenv('APP_KEY') ?: '',
+    ];
 
 function db(): PDO {
     static $pdo = null;
@@ -38,7 +49,7 @@ function csrf_token(): string {
 function csrf_check(?string $token): void {
     session_start_secure();
     if (!$token || !hash_equals((string)($_SESSION['csrf'] ?? ''), $token)) {
-        http_response_code(403); exit('Ø§Ù„Ø·Ù„Ø¨ ØºÙŠØ± ØµØ§Ù„Ø­. Ø­Ø¯Ù‘Ø« Ø§Ù„ØµÙØ­Ø© ÙˆØ­Ø§ÙˆÙ„ Ù…Ø¬Ø¯Ø¯Ù‹Ø§.');
+        http_response_code(403); exit('Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨ Ã˜ÂºÃ™Å Ã˜Â± Ã˜ÂµÃ˜Â§Ã™â€žÃ˜Â­. Ã˜Â­Ã˜Â¯Ã™â€˜Ã˜Â« Ã˜Â§Ã™â€žÃ˜ÂµÃ™ÂÃ˜Â­Ã˜Â© Ã™Ë†Ã˜Â­Ã˜Â§Ã™Ë†Ã™â€ž Ã™â€¦Ã˜Â¬Ã˜Â¯Ã˜Â¯Ã™â€¹Ã˜Â§.');
     }
 }
 
@@ -64,7 +75,7 @@ function json_response(array $data, int $status = 200): never {
 }
 
 function post_only(): void {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['ok'=>false,'error'=>'Ø§Ù„Ø·Ù„Ø¨ ØºÙŠØ± Ù…Ø³Ù…ÙˆØ­'],405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['ok'=>false,'error'=>'Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â³Ã™â€¦Ã™Ë†Ã˜Â­'],405);
 }
 
 function client_key(string $purpose): string {
@@ -79,7 +90,7 @@ function throttle(string $purpose, int $max, int $minutes): void {
     $pdo->prepare('DELETE FROM request_limits WHERE created_at < DATE_SUB(NOW(), INTERVAL 2 DAY)')->execute();
     $query = $pdo->prepare("SELECT COUNT(*) FROM request_limits WHERE request_key = ? AND created_at >= DATE_SUB(NOW(), INTERVAL $minutes MINUTE)");
     $query->execute([$key]);
-    if ((int)$query->fetchColumn() >= $max) json_response(['ok'=>false,'error'=>'Ø£Ø±Ø³Ù„Øª Ø·Ù„Ø¨Ø§Øª ÙƒØ«ÙŠØ±Ø©. Ø¬Ø±Ù‘Ø¨ Ù„Ø§Ø­Ù‚Ù‹Ø§.'],429);
+    if ((int)$query->fetchColumn() >= $max) json_response(['ok'=>false,'error'=>'Ã˜Â£Ã˜Â±Ã˜Â³Ã™â€žÃ˜Âª Ã˜Â·Ã™â€žÃ˜Â¨Ã˜Â§Ã˜Âª Ã™Æ’Ã˜Â«Ã™Å Ã˜Â±Ã˜Â©. Ã˜Â¬Ã˜Â±Ã™â€˜Ã˜Â¨ Ã™â€žÃ˜Â§Ã˜Â­Ã™â€šÃ™â€¹Ã˜Â§.'],429);
     $pdo->prepare('INSERT INTO request_limits (request_key) VALUES (?)')->execute([$key]);
 }
 
